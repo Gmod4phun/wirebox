@@ -19,20 +19,7 @@ namespace Sandbox
 			this.outputName = outputName;
 			this.type = type;
 
-			if (type == "bool")
-				value = false;
-			else if (type == "int")
-				value = 0;
-			else if (type == "float")
-				value = 0.0f;
-			else if (type == "string")
-				value = "";
-			else if (type == "vector3")
-				value = Vector3.Zero;
-			else if (type == "angle")
-				value = Angles.Zero;
-			else if (type == "rotation")
-				value = Rotation.Identity;
+			value = IWireEntity.GetDefaultValueFromType( type );
 		}
 	}
 
@@ -55,6 +42,8 @@ namespace Sandbox
 			new() { Name = name, Type = "angle" };
 		public static PortType Rotation( string name ) =>
 			new() { Name = name, Type = "rotation" };
+		public static PortType Entity( string name ) =>
+			new() { Name = name, Type = "entity" };
 	}
 
 	public interface IWireOutputEntity : IWireEntity
@@ -126,7 +115,7 @@ namespace Sandbox
 				: WirePorts.outputs.Keys.Select( ( string key ) =>
 				{
 					var type = WirePorts.outputs[key].type;
-					if (type == "string")
+					if ( type == "string" )
 						return $"{key} [{type}]: \"{WirePorts.outputs[key].value}\"";
 
 					return $"{key} [{type}]: {WirePorts.outputs[key].value}";
