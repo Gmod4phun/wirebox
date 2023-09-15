@@ -12,6 +12,7 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 	private int constantValue = 3;
 	private float storedFloat = 0;
 	private Entity storedEnt;
+	private float[] storedRAM;
 
 	[Net]
 	public string DebugText { get; set; } = "";
@@ -22,11 +23,12 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 	{
 		return new Dictionary<string, string[]>
 		{
-			["Math"] = new string[] { "Constant", "Add", "Subtract", "Multiply", "Divide", "Negate", "Absolute", "Sin", "Cos" },
+			["Math"] = new string[] { "Constant", "Add", "Subtract", "Multiply", "Divide", "Mod", "Negate", "Absolute", "Sin", "Cos" },
 			["Logic"] = new string[] { "Not", "And", "Or", "GreaterThan", "LessThan", "Equal" },
 			["Comparison"] = new string[] { "Max", "Min", "Clamp" },
 			["Time"] = new string[] { "Delta", "Tick", "Smoother" },
 			["Entity"] = new string[] { "Position", "Velocity", "Owner" },
+			["Memory"] = new string[] { "Latch", "D-Latch", "Toggle", "RAM", "Incrementor" },
 		};
 	}
 
@@ -100,35 +102,69 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 		var inputs = ((IWireEntity)this).WirePorts.inputs;
 		if ( GateType == "Add" )
 		{
-			BulkRegisterInputHandlers( ( float value ) =>
+			Action<object> handler = ( object value ) =>
 			{
-				var outValue =
-					  inputs["A"].asFloat
-					+ inputs["B"].asFloat
-					+ inputs["C"].asFloat
-					+ inputs["D"].asFloat
-					+ inputs["E"].asFloat
-					+ inputs["F"].asFloat
-					+ inputs["G"].asFloat
-					+ inputs["H"].asFloat;
-				this.WireTriggerOutput( "Out", outValue );
-			}, new string[] { "A", "B", "C", "D", "E", "F", "G", "H" } );
+				if ( inputs["A"].value is Vector3 )
+				{
+					var outValue =
+						  inputs["A"].asVector3
+						+ inputs["B"].asVector3
+						+ inputs["C"].asVector3
+						+ inputs["D"].asVector3
+						+ inputs["E"].asVector3
+						+ inputs["F"].asVector3
+						+ inputs["G"].asVector3
+						+ inputs["H"].asVector3;
+					this.WireTriggerOutput( "Out", outValue );
+				}
+				else
+				{
+					var outValue =
+						  inputs["A"].asFloat
+						+ inputs["B"].asFloat
+						+ inputs["C"].asFloat
+						+ inputs["D"].asFloat
+						+ inputs["E"].asFloat
+						+ inputs["F"].asFloat
+						+ inputs["G"].asFloat
+						+ inputs["H"].asFloat;
+					this.WireTriggerOutput( "Out", outValue );
+				}
+			};
+			BulkRegisterInputHandlers( handler, new string[] { "A", "B", "C", "D", "E", "F", "G", "H" } );
 		}
 		else if ( GateType == "Subtract" )
 		{
-			BulkRegisterInputHandlers( ( float value ) =>
+			Action<object> handler = ( object value ) =>
 			{
-				var outValue =
-					  inputs["A"].asFloat
-					- inputs["B"].asFloat
-					- inputs["C"].asFloat
-					- inputs["D"].asFloat
-					- inputs["E"].asFloat
-					- inputs["F"].asFloat
-					- inputs["G"].asFloat
-					- inputs["H"].asFloat;
-				this.WireTriggerOutput( "Out", outValue );
-			}, new string[] { "A", "B", "C", "D", "E", "F", "G", "H" } );
+				if ( inputs["A"].value is Vector3 )
+				{
+					var outValue =
+						  inputs["A"].asVector3
+						- inputs["B"].asVector3
+						- inputs["C"].asVector3
+						- inputs["D"].asVector3
+						- inputs["E"].asVector3
+						- inputs["F"].asVector3
+						- inputs["G"].asVector3
+						- inputs["H"].asVector3;
+					this.WireTriggerOutput( "Out", outValue );
+				}
+				else
+				{
+					var outValue =
+						  inputs["A"].asFloat
+						- inputs["B"].asFloat
+						- inputs["C"].asFloat
+						- inputs["D"].asFloat
+						- inputs["E"].asFloat
+						- inputs["F"].asFloat
+						- inputs["G"].asFloat
+						- inputs["H"].asFloat;
+					this.WireTriggerOutput( "Out", outValue );
+				}
+			};
+			BulkRegisterInputHandlers( handler, new string[] { "A", "B", "C", "D", "E", "F", "G", "H" } );
 		}
 		else if ( GateType == "Multiply" )
 		{
@@ -158,12 +194,20 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 				}
 			}, new string[] { "A", "B" } );
 		}
-		else if ( GateType == "Negate" )
+		else if ( GateType == "Mod" )
 		{
-			this.RegisterInputHandler( "A", ( float value ) =>
+			BulkRegisterInputHandlers( ( float value ) =>
 			{
-				this.WireTriggerOutput( "Out", -value );
-			} );
+				var b = inputs["B"].asFloat;
+				if ( b == 0 )
+				{
+					this.WireTriggerOutput( "Out", 0 );
+				}
+				else
+				{
+					this.WireTriggerOutput( "Out", inputs["A"].asFloat % b );
+				}
+			}, new string[] { "A", "B" } );
 		}
 		else if ( GateType == "Sin" )
 		{
@@ -336,6 +380,94 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 				storedEnt = value;
 			} );
 		}
+		else if ( GateType == "Latch" )
+		{
+			this.RegisterInputHandler( "Value", ( object value ) => { } );
+			this.RegisterInputHandler( "Write", ( bool value ) =>
+			{
+				if ( value )
+				{
+					this.WireTriggerOutput( "Out", inputs["Value"].value );
+				}
+			} );
+		}
+		else if ( GateType == "D-Latch" )
+		{
+			Action<object> handler = ( object value ) =>
+			{
+				if ( inputs["On"].asBool )
+				{
+					this.WireTriggerOutput( "Out", inputs["Value"].value );
+				}
+			};
+			this.RegisterInputHandler( "Value", handler );
+			this.RegisterInputHandler( "On", handler );
+		}
+		else if ( GateType == "Toggle" )
+		{
+			this.RegisterInputHandler( "Toggle", ( bool value ) =>
+			{
+				if ( value )
+				{
+					float newValue = Math.Abs( storedFloat - 1 ) < 0.01 ? 0 : 1;
+					storedFloat = newValue;
+					this.WireTriggerOutput( "Out", storedFloat > 0.01f );
+				}
+			} );
+		}
+		else if ( GateType == "RAM" )
+		{
+			storedRAM ??= new float[32768];
+			this.RegisterInputHandler( "Address", ( float value ) =>
+			{
+				if ( (int)value >= 0 && (int)value < 32768 )
+				{
+					this.WireTriggerOutput( "Out", storedRAM[(int)value] );
+				}
+			} );
+			this.RegisterInputHandler( "Value", ( float value ) => { } );
+			this.RegisterInputHandler( "Write", ( bool value ) =>
+			{
+				var address = (int)inputs["Address"].asFloat;
+				if ( value && address is >= 0 and < 32768 )
+				{
+					storedRAM[address] = inputs["Value"].asFloat;
+					this.WireTriggerOutput( "Out", inputs["Value"].asFloat );
+				}
+			} );
+			this.RegisterInputHandler( "Reset", ( bool value ) =>
+			{
+				storedRAM = new float[32768];
+				this.WireTriggerOutput( "Out", 0f );
+			} );
+		}
+		else if ( GateType == "Incrementor" )
+		{
+			this.RegisterInputHandler( "Increment", ( bool value ) =>
+			{
+				if ( value )
+				{
+					storedFloat++;
+					this.WireTriggerOutput( "Out", storedFloat );
+				}
+			} );
+			this.RegisterInputHandler( "Decrement", ( bool value ) =>
+			{
+				if ( value )
+				{
+					storedFloat--;
+					this.WireTriggerOutput( "Out", storedFloat );
+				}
+			} );
+			this.RegisterInputHandler( "Reset", ( bool value ) =>
+			{
+				if ( value )
+				{
+					storedFloat = 0;
+					this.WireTriggerOutput( "Out", storedFloat );
+				}
+			} );
+		}
 	}
 
 	[Event.Physics.PostStep]
@@ -370,6 +502,14 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 			this.RegisterInputHandler( inputName, handler );
 		}
 	}
+	protected void BulkRegisterInputHandlers( Action<object> handler, string[] inputNames )
+	{
+		foreach ( var inputName in inputNames )
+		{
+			this.RegisterInputHandler( inputName, handler );
+		}
+	}
+
 	public PortType[] WireGetOutputs()
 	{
 		if ( GateType == "Owner" )
@@ -379,6 +519,14 @@ public partial class WireGateEntity : Prop, IWireInputEntity, IWireOutputEntity,
 		if ( GateType == "Position" || GateType == "Velocity" )
 		{
 			return new PortType[] { PortType.Vector3( "Out" ) };
+		}
+		if ( GateType is "Toggle" )
+		{
+			return new PortType[] { PortType.Bool( "Out" ) };
+		}
+		if ( GateType is "Latch" or "D-Latch" or "Add" or "Subtract" )
+		{
+			return new PortType[] { PortType.Any( "Out" ) };
 		}
 		return new PortType[] { PortType.Float( "Out" ) };
 	}
