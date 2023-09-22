@@ -16,7 +16,7 @@ public partial class LightBridgeEntity : Prop, IWireInputEntity
 				bridgeEntity?.Delete();
 				return;
 			}
-			var vertexModel = VertexMeshBuilder.GenerateRectangleServer( (int)length, 100, 1, 64 );
+			var vertexModel = VertexMeshBuilder.CreateRectangle( (int)length, 100, 1, 64 );
 			if ( !bridgeEntity.IsValid() )
 			{
 				bridgeEntity = VertexMeshBuilder.SpawnEntity( vertexModel );
